@@ -5,15 +5,17 @@
 // Implements a simplex (one-way) receiver with an Rx-B1 module
 // Tested on Arduino Mega, Duemilanova, Uno, Due, Teensy, ESP-12
 
-const int rfRxPin = A1;
-
 #include <ArduinoRobot.h>
-
 #include <RH_ASK.h>
 #ifdef RH_HAVE_HARDWARE_SPI
 #include <SPI.h> // Not actually used but needed to compile
 #endif
 
+const unsigned long receiveTimeout = 1000;
+unsigned long previousReceive = 0;
+unsigned long currentTime = 0;
+
+const int rfRxPin = A1;
 RH_ASK driver(2000, rfRxPin, 0);
 
 struct RFDataStruct {
@@ -44,11 +46,14 @@ void setup()
 
 void loop()
 {
+    currentTime = millis();
+    
     uint8_t buf[RH_ASK_MAX_MESSAGE_LEN];
     uint8_t buflen = sizeof(buf);
 
     if (driver.recv((uint8_t*)&RFData, &RFDatalen))
     {
+      previousReceive = currentTime;
       Robot.motorsWrite(
         RFData.speedLeft,
         RFData.speedRight
@@ -56,5 +61,9 @@ void loop()
 
       Robot.debugPrint(RFData.speedLeft, 0, 10);
       Robot.debugPrint(RFData.speedRight, 0, 20);
+    }
+
+    if (currentTime - previousReceive >= receiveTimeout) {
+      Robot.motorsWrite(0,0);
     }
 }

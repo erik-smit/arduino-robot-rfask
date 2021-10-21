@@ -16,11 +16,17 @@ hd44780_pinIO lcd( rs, en, d4, d5, d6, d7);
 #include <SPI.h> // Not actually used but needed to compile
 #endif
 
+const unsigned long sendTimeout = 500;
+unsigned long previousSend = 0;
+unsigned long currentTime = 0;
+
 const int VRxPin = A1;
 const int VRyPin = A2;
 const int SWPin = 3;
 const int rfTxPin = 2;
 const int rfRxPin = 0;
+
+RH_ASK driver(2000, 0, rfTxPin);
 
 struct RFDataStruct {
   int speedLeft;
@@ -30,7 +36,6 @@ struct RFDataStruct {
 struct RFDataStruct RFData;
 struct RFDataStruct RFDataPrev;
 
-RH_ASK driver(2000, 0, rfTxPin);
 
 void setup()
 {
@@ -48,6 +53,8 @@ void setup()
 
 void loop()
 {
+    currentTime = millis();
+    
     int VRx = analogRead(VRxPin);
     int VRy = analogRead(VRyPin);
     int SW = digitalRead(SWPin);
@@ -63,10 +70,13 @@ void loop()
     RFData.speedLeft = constrain(RFData.speedLeft, -255, 255);
     RFData.speedRight = constrain(RFData.speedRight, -255, 255);
 
-    if (RFData.speedLeft != RFDataPrev.speedLeft ||
-      RFData.speedRight != RFDataPrev.speedRight) {
-      driver.send((uint8_t *)&RFData, sizeof(struct RFDataStruct));
-      driver.waitPacketSent();
-      memcpy(&RFDataPrev, &RFData, sizeof(struct RFDataStruct));
+    if (
+      RFData.speedLeft != RFDataPrev.speedLeft ||
+      RFData.speedRight != RFDataPrev.speedRight ||
+      currentTime - previousSend >= sendTimeout) {
+        previousSend = currentTime;
+        driver.send((uint8_t *)&RFData, sizeof(struct RFDataStruct));
+        driver.waitPacketSent();
+        memcpy(&RFDataPrev, &RFData, sizeof(struct RFDataStruct));
     }
 }
