@@ -19,11 +19,12 @@ const int rfRxPin = A1;
 RH_ASK driver(2000, rfRxPin, 0);
 
 struct RFDataStruct {
-  int speedLeft;
-  int speedRight;
+  int speedLeft = 0;
+  int speedRight = 0;
 };
 
 RFDataStruct RFData;
+RFDataStruct RFDataPrev;
 uint8_t RFDatalen = sizeof(RFData);
 
 
@@ -59,11 +60,17 @@ void loop()
         RFData.speedRight
       );
 
-      Robot.debugPrint(RFData.speedLeft, 0, 10);
-      Robot.debugPrint(RFData.speedRight, 0, 20);
+      Robot.stroke(WHITE);
+      Robot.text(RFDataPrev.speedLeft, 0, 10);
+      Robot.text(RFDataPrev.speedRight, 0, 20);
+      Robot.stroke(BLACK);
+      Robot.text(RFData.speedLeft, 0, 10);
+      Robot.text(RFData.speedRight, 0, 20);
+      RFDataPrev = RFData;
     }
 
     if (currentTime - previousReceive >= receiveTimeout) {
+      previousReceive = currentTime;
       Robot.motorsWrite(0,0);
     }
 }
